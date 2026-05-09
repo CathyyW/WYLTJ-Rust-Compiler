@@ -16,7 +16,7 @@ export function ControlBar({ onLoadFile, onSaveFile, onCompile, isCompiling }: C
           <span className="text-xl">🦀</span>
         </div>
         <div>
-          <h1 className="text-xl text-[#E8E8E8]">Rust Compiler</h1>
+          <h1 className="text-xl text-[#E8E8E8]">WYLTJ-Rust-Compiler</h1>
           <p className="text-xs text-[#9CA3AF]">Lexical → AST → IR → Target</p>
         </div>
       </div>
