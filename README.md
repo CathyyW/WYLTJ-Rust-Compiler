@@ -1,7 +1,7 @@
 
-  # Untitled
+  # WYLTJ-Rust-Compiler
 
-  This is a code bundle for Untitled. The original project is available at https://www.figma.com/design/40DISsdA8SwZRSU703WmhL/Untitled.
+  This is a code bundle for WYLTJ-Rust-Compiler. The original project is available at https://www.figma.com/design/40DISsdA8SwZRSU703WmhL/Untitled.
 
   ## Running the code
 
