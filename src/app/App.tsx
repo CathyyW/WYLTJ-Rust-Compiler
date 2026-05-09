@@ -3,6 +3,7 @@ import { CodeEditor } from './components/CodeEditor';
 import { ConsoleOutput } from './components/ConsoleOutput';
 import { AnalysisTabs } from './components/AnalysisTabs';
 import { ControlBar } from './components/ControlBar';
+import { analyzeSource } from './compiler/analyzer';
 
 const SAMPLE_CODE = `fn main() {
     let x = 5;
@@ -11,106 +12,8 @@ const SAMPLE_CODE = `fn main() {
     println!("Sum: {}", sum);
 }`;
 
-const SAMPLE_AST = {
-  type: 'Program' as const,
-  label: 'main.rs',
-  children: [
-    {
-      type: 'Statement' as const,
-      label: 'FunctionDeclaration: main',
-      children: [
-        {
-          type: 'Statement' as const,
-          label: 'VariableDeclaration: x',
-          children: [
-            { type: 'Literal' as const, label: '5' },
-          ],
-        },
-        {
-          type: 'Statement' as const,
-          label: 'VariableDeclaration: y',
-          children: [
-            { type: 'Literal' as const, label: '10' },
-          ],
-        },
-        {
-          type: 'Statement' as const,
-          label: 'VariableDeclaration: sum',
-          children: [
-            {
-              type: 'Expression' as const,
-              label: 'BinaryExpression: +',
-              children: [
-                { type: 'Identifier' as const, label: 'x' },
-                { type: 'Identifier' as const, label: 'y' },
-              ],
-            },
-          ],
-        },
-        {
-          type: 'Statement' as const,
-          label: 'MacroCall: println!',
-          children: [
-            { type: 'Literal' as const, label: '"Sum: {}"' },
-            { type: 'Identifier' as const, label: 'sum' },
-          ],
-        },
-      ],
-    },
-  ],
-};
-
-const SAMPLE_TOKENS = [
-  { type: 'KEYWORD', value: 'fn', line: 1 },
-  { type: 'IDENTIFIER', value: 'main', line: 1 },
-  { type: 'LPAREN', value: '(', line: 1 },
-  { type: 'RPAREN', value: ')', line: 1 },
-  { type: 'LBRACE', value: '{', line: 1 },
-  { type: 'KEYWORD', value: 'let', line: 2 },
-  { type: 'IDENTIFIER', value: 'x', line: 2 },
-  { type: 'ASSIGN', value: '=', line: 2 },
-  { type: 'INTEGER', value: '5', line: 2 },
-  { type: 'SEMICOLON', value: ';', line: 2 },
-  { type: 'KEYWORD', value: 'let', line: 3 },
-  { type: 'IDENTIFIER', value: 'y', line: 3 },
-  { type: 'ASSIGN', value: '=', line: 3 },
-  { type: 'INTEGER', value: '10', line: 3 },
-  { type: 'SEMICOLON', value: ';', line: 3 },
-  { type: 'KEYWORD', value: 'let', line: 4 },
-  { type: 'IDENTIFIER', value: 'sum', line: 4 },
-  { type: 'ASSIGN', value: '=', line: 4 },
-  { type: 'IDENTIFIER', value: 'x', line: 4 },
-  { type: 'OPERATOR', value: '+', line: 4 },
-  { type: 'IDENTIFIER', value: 'y', line: 4 },
-  { type: 'SEMICOLON', value: ';', line: 4 },
-];
-
-const SAMPLE_IR = `%1 = alloc i32
-%2 = alloc i32
-%3 = alloc i32
-store i32 5, ptr %1
-store i32 10, ptr %2
-%4 = load i32, ptr %1
-%5 = load i32, ptr %2
-%6 = add i32 %4, %5
-store i32 %6, ptr %3
-%7 = load i32, ptr %3
-call void @print_int(i32 %7)`;
-
-const SAMPLE_TARGET = `main:
-    push    rbp
-    mov     rbp, rsp
-    sub     rsp, 16
-    mov     DWORD PTR [rbp-4], 5
-    mov     DWORD PTR [rbp-8], 10
-    mov     eax, DWORD PTR [rbp-4]
-    add     eax, DWORD PTR [rbp-8]
-    mov     DWORD PTR [rbp-12], eax
-    mov     edi, DWORD PTR [rbp-12]
-    call    print_int
-    add     rsp, 16
-    pop     rbp
-    ret`;
+const IR_PLACEHOLDER = '# IR backend not connected yet.';
+const TARGET_PLACEHOLDER = '# Target backend not connected yet.';
 
 export default function App() {
   const [code, setCode] = useState(SAMPLE_CODE);
@@ -124,23 +27,28 @@ export default function App() {
   const handleCompile = async () => {
     setIsCompiling(true);
     setLogs([{ type: 'info', message: 'Starting compilation...' }]);
-
-    setTimeout(() => {
+    try {
+      const result = analyzeSource(code);
+      setLogs(result.logs);
+      setAstTree(result.astTree);
+      setLexicalTokens(result.tokens);
+      setIntermediateCode(IR_PLACEHOLDER);
+      setTargetCode(TARGET_PLACEHOLDER);
+    } catch (error) {
+      setAstTree(null);
+      setLexicalTokens([]);
+      setIntermediateCode(IR_PLACEHOLDER);
+      setTargetCode(TARGET_PLACEHOLDER);
       setLogs([
         { type: 'info', message: 'Starting compilation...' },
-        { type: 'success', message: 'Lexical analysis completed' },
-        { type: 'success', message: 'Syntax analysis completed' },
-        { type: 'success', message: 'AST generation completed' },
-        { type: 'success', message: 'Intermediate code generation completed' },
-        { type: 'success', message: 'Target code generation completed' },
-        { type: 'success', message: 'Compilation successful!' },
+        {
+          type: 'error',
+          message: `Unexpected compiler error: ${error instanceof Error ? error.message : String(error)}`,
+        },
       ]);
-      setAstTree(SAMPLE_AST);
-      setLexicalTokens(SAMPLE_TOKENS);
-      setIntermediateCode(SAMPLE_IR);
-      setTargetCode(SAMPLE_TARGET);
+    } finally {
       setIsCompiling(false);
-    }, 1500);
+    }
   };
 
   const handleLoadFile = () => {
