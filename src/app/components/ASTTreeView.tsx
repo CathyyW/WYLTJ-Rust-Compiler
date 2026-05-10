@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ChevronRight, ChevronDown } from 'lucide-react';
 
 interface ASTNode {
-  type: 'Program' | 'Statement' | 'Expression' | 'Literal' | 'Identifier';
+  type: 'Program' | 'Statement' | 'Expression' | 'Literal' | 'Identifier' | 'Type' | 'Attribute' | 'Parameter' | 'Operator' | 'List';
   label: string;
   children?: ASTNode[];
 }
@@ -22,6 +22,11 @@ function TreeNode({ node, depth = 0 }: { node: ASTNode; depth?: number }) {
       case 'Expression': return 'bg-[#98FB98] text-[#1A1B1E]';
       case 'Literal': return 'bg-[#FFB86C] text-[#1A1B1E]';
       case 'Identifier': return 'bg-[#8BE9FD] text-[#1A1B1E]';
+      case 'Type': return 'bg-[#FFD166] text-[#1A1B1E]';
+      case 'Attribute': return 'bg-[#FF9F1C] text-[#1A1B1E]';
+      case 'Parameter': return 'bg-[#A3D8F4] text-[#1A1B1E]';
+      case 'Operator': return 'bg-[#F5A9B8] text-[#1A1B1E]';
+      case 'List': return 'bg-[#C7C7C7] text-[#1A1B1E]';
       default: return 'bg-[#363944] text-[#E8E8E8]';
     }
   };

@@ -1,5 +1,5 @@
 export interface DisplayASTNode {
-  type: 'Program' | 'Statement' | 'Expression' | 'Literal' | 'Identifier';
+  type: 'Program' | 'Statement' | 'Expression' | 'Literal' | 'Identifier' | 'Type' | 'Attribute' | 'Parameter' | 'Operator' | 'List';
   label: string;
   children?: DisplayASTNode[];
 }

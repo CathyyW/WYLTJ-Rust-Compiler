@@ -1,4 +1,4 @@
-import type { DisplayASTNode, ExpressionNode, ProgramNode, StatementNode } from './ast';
+import type { DisplayASTNode, ExpressionNode, FunctionParameter, ProgramNode, StatementNode } from './ast';
 import { Lexer } from './lexer';
 import { Parser } from './parser';
 
@@ -13,137 +13,141 @@ export interface AnalyzeResult {
   logs: CompilerLog[];
 }
 
-function expressionLabel(node: ExpressionNode): string {
-  if (node.kind === 'Identifier') return node.value;
-  if (node.kind === 'IntegerLiteral') return String(node.value);
-  if (node.kind === 'PrefixExpression') return `Prefix: ${node.operator}`;
-  if (node.kind === 'InfixExpression') return `Binary: ${node.operator}`;
-  if (node.kind === 'RangeExpression') return node.inclusive ? 'Range: ..=' : 'Range: ..';
-  return 'CallExpression';
+function makeNode(type: DisplayASTNode['type'], label: string, children?: DisplayASTNode[]): DisplayASTNode {
+  const node: DisplayASTNode = { type, label };
+  if (children !== undefined) {
+    node.children = children;
+  }
+  return node;
+}
+
+function mapParameter(param: FunctionParameter): DisplayASTNode {
+  return makeNode('Parameter', 'Parameter', [
+    makeNode('Attribute', param.mutable ? 'mut' : 'immutable'),
+    makeNode('Identifier', param.name),
+    makeNode('Type', param.typeName ?? '(none)'),
+  ]);
 }
 
 function mapExpression(node: ExpressionNode): DisplayASTNode {
   if (node.kind === 'Identifier') {
-    return { type: 'Identifier', label: node.value };
+    return makeNode('Identifier', node.value);
   }
   if (node.kind === 'IntegerLiteral') {
-    return { type: 'Literal', label: String(node.value) };
+    return makeNode('Literal', String(node.value));
   }
   if (node.kind === 'PrefixExpression') {
-    return {
-      type: 'Expression',
-      label: `PrefixExpression: ${node.operator}`,
-      children: [mapExpression(node.right)],
-    };
+    return makeNode('Expression', 'PrefixExpression', [
+      makeNode('Operator', node.operator),
+      mapExpression(node.right),
+    ]);
   }
   if (node.kind === 'InfixExpression') {
-    return {
-      type: 'Expression',
-      label: `InfixExpression: ${node.operator}`,
-      children: [mapExpression(node.left), mapExpression(node.right)],
-    };
+    return makeNode('Expression', 'InfixExpression', [
+      makeNode('Operator', node.operator),
+      mapExpression(node.left),
+      mapExpression(node.right),
+    ]);
   }
   if (node.kind === 'RangeExpression') {
-    return {
-      type: 'Expression',
-      label: node.inclusive ? 'RangeExpression: ..=' : 'RangeExpression: ..',
-      children: [mapExpression(node.start), mapExpression(node.end)],
-    };
+    return makeNode('Expression', 'RangeExpression', [
+      makeNode('Operator', node.inclusive ? '..=' : '..'),
+      makeNode('Expression', 'Start', [mapExpression(node.start)]),
+      makeNode('Expression', 'End', [mapExpression(node.end)]),
+    ]);
   }
-  return {
-    type: 'Expression',
-    label: 'CallExpression',
-    children: [mapExpression(node.function), ...node.args.map(mapExpression)],
-  };
+  const argsNode = makeNode(
+    'List',
+    node.args.length > 0 ? 'Arguments' : 'Arguments (empty)',
+    node.args.map(mapExpression),
+  );
+  return makeNode('Expression', 'CallExpression', [
+    makeNode('Expression', 'Callee', [mapExpression(node.function)]),
+    argsNode,
+  ]);
 }
 
 function mapStatement(node: StatementNode): DisplayASTNode {
   switch (node.kind) {
     case 'LetStatement':
-      return {
-        type: 'Statement',
-        label: `Let: ${node.mutable ? 'mut ' : ''}${node.name.value}${node.typeName ? `: ${node.typeName}` : ''}`,
-        children: node.value ? [mapExpression(node.value)] : [],
-      };
+      return makeNode('Statement', 'LetStatement', [
+        makeNode('Attribute', node.mutable ? 'mut' : 'immutable'),
+        makeNode('Identifier', node.name.value),
+        makeNode('Type', node.typeName ?? '(none)'),
+        makeNode(
+          'Expression',
+          node.value ? 'Initializer' : 'Initializer (none)',
+          node.value ? [mapExpression(node.value)] : [],
+        ),
+      ]);
     case 'ReturnStatement':
-      return {
-        type: 'Statement',
-        label: 'ReturnStatement',
-        children: node.value ? [mapExpression(node.value)] : [],
-      };
+      return makeNode('Statement', 'ReturnStatement', [
+        makeNode(
+          'Expression',
+          node.value ? 'ReturnValue' : 'ReturnValue (none)',
+          node.value ? [mapExpression(node.value)] : [],
+        ),
+      ]);
     case 'ExpressionStatement':
-      return {
-        type: 'Statement',
-        label: `ExpressionStatement: ${expressionLabel(node.expression)}`,
-        children: [mapExpression(node.expression)],
-      };
+      return makeNode('Statement', 'ExpressionStatement', [mapExpression(node.expression)]);
     case 'AssignmentStatement':
-      return {
-        type: 'Statement',
-        label: `Assignment: ${node.target.value}`,
-        children: [mapExpression(node.value)],
-      };
+      return makeNode('Statement', 'AssignmentStatement', [
+        makeNode('Expression', 'Target', [makeNode('Identifier', node.target.value)]),
+        makeNode('Expression', 'Value', [mapExpression(node.value)]),
+      ]);
     case 'BlockStatement':
-      return {
-        type: 'Statement',
-        label: 'BlockStatement',
-        children: node.statements.map(mapStatement),
-      };
+      return makeNode('Statement', 'BlockStatement', node.statements.map(mapStatement));
     case 'FunctionDeclaration':
-      return {
-        type: 'Statement',
-        label: `FunctionDeclaration: ${node.name.value}`,
-        children: [
-          ...node.params.map((param) => ({
-            type: 'Identifier' as const,
-            label: `${param.mutable ? 'mut ' : ''}${param.name}${param.typeName ? `: ${param.typeName}` : ''}`,
-          })),
-          mapStatement(node.body),
-        ],
-      };
+      return makeNode('Statement', 'FunctionDeclaration', [
+        makeNode('Identifier', node.name.value),
+        makeNode(
+          'List',
+          node.params.length > 0 ? 'Parameters' : 'Parameters (empty)',
+          node.params.map(mapParameter),
+        ),
+        makeNode('Statement', 'ReturnType', [makeNode('Type', node.returnType ?? '(none)')]),
+        mapStatement(node.body),
+      ]);
     case 'IfStatement': {
       const children: DisplayASTNode[] = [
-        {
-          type: 'Expression',
-          label: 'Condition',
-          children: [mapExpression(node.condition)],
-        },
-        mapStatement(node.consequence),
+        makeNode('Expression', 'Condition', [mapExpression(node.condition)]),
+        makeNode('Statement', 'Consequence', [mapStatement(node.consequence)]),
       ];
       if (node.alternative) {
-        children.push(mapStatement(node.alternative));
+        children.push(makeNode('Statement', 'Alternative', [mapStatement(node.alternative)]));
+      } else {
+        children.push(makeNode('Statement', 'Alternative (none)', []));
       }
-      return { type: 'Statement', label: 'IfStatement', children };
+      return makeNode('Statement', 'IfStatement', children);
     }
     case 'WhileStatement':
-      return {
-        type: 'Statement',
-        label: 'WhileStatement',
-        children: [mapExpression(node.condition), mapStatement(node.body)],
-      };
+      return makeNode('Statement', 'WhileStatement', [
+        makeNode('Expression', 'Condition', [mapExpression(node.condition)]),
+        makeNode('Statement', 'Body', [mapStatement(node.body)]),
+      ]);
     case 'ForStatement':
-      return {
-        type: 'Statement',
-        label: `ForStatement: ${node.mutable ? 'mut ' : ''}${node.variable.value}${node.typeName ? `: ${node.typeName}` : ''}`,
-        children: [mapExpression(node.iterator), mapStatement(node.body)],
-      };
+      return makeNode('Statement', 'ForStatement', [
+        makeNode('Statement', 'VariableDeclaration', [
+          makeNode('Attribute', node.mutable ? 'mut' : 'immutable'),
+          makeNode('Identifier', node.variable.value),
+          makeNode('Type', node.typeName ?? '(none)'),
+        ]),
+        makeNode('Expression', 'Iterator', [mapExpression(node.iterator)]),
+        makeNode('Statement', 'Body', [mapStatement(node.body)]),
+      ]);
     case 'LoopStatement':
-      return { type: 'Statement', label: 'LoopStatement', children: [mapStatement(node.body)] };
+      return makeNode('Statement', 'LoopStatement', [makeNode('Statement', 'Body', [mapStatement(node.body)])]);
     case 'BreakStatement':
-      return { type: 'Statement', label: 'BreakStatement' };
+      return makeNode('Statement', 'BreakStatement', []);
     case 'ContinueStatement':
-      return { type: 'Statement', label: 'ContinueStatement' };
+      return makeNode('Statement', 'ContinueStatement', []);
     default:
-      return { type: 'Statement', label: 'UnknownStatement' };
+      return makeNode('Statement', 'UnknownStatement', []);
   }
 }
 
 function mapProgram(program: ProgramNode): DisplayASTNode {
-  return {
-    type: 'Program',
-    label: 'Program',
-    children: program.statements.map(mapStatement),
-  };
+  return makeNode('Program', 'Program', program.statements.map(mapStatement));
 }
 
 export function analyzeSource(source: string): AnalyzeResult {
