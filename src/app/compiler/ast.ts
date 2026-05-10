@@ -77,6 +77,7 @@ export interface ForStatement {
   kind: 'ForStatement';
   variable: IdentifierExpression;
   mutable: boolean;
+  typeName?: string;
   iterator: ExpressionNode;
   body: BlockStatement;
 }
@@ -103,10 +104,10 @@ export interface AssignmentStatement {
 export type ExpressionNode =
   | IdentifierExpression
   | IntegerLiteral
-  | StringLiteral
   | PrefixExpression
   | InfixExpression
-  | CallExpression;
+  | CallExpression
+  | RangeExpression;
 
 export interface IdentifierExpression {
   kind: 'Identifier';
@@ -116,11 +117,6 @@ export interface IdentifierExpression {
 export interface IntegerLiteral {
   kind: 'IntegerLiteral';
   value: number;
-}
-
-export interface StringLiteral {
-  kind: 'StringLiteral';
-  value: string;
 }
 
 export interface PrefixExpression {
@@ -140,4 +136,11 @@ export interface CallExpression {
   kind: 'CallExpression';
   function: ExpressionNode;
   args: ExpressionNode[];
+}
+
+export interface RangeExpression {
+  kind: 'RangeExpression';
+  start: ExpressionNode;
+  end: ExpressionNode;
+  inclusive: boolean;
 }

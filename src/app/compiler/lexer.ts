@@ -97,6 +97,8 @@ export class Lexer {
         return this.readSingle('COLON', startLine, startCol);
       case ';':
         return this.readSingle('SEMICOLON', startLine, startCol);
+      case '#':
+        return this.readSingle('HASH', startLine, startCol);
       case '"':
         return this.readStringToken(startLine, startCol);
       case '':

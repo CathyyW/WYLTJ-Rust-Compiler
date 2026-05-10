@@ -16,9 +16,9 @@ export interface AnalyzeResult {
 function expressionLabel(node: ExpressionNode): string {
   if (node.kind === 'Identifier') return node.value;
   if (node.kind === 'IntegerLiteral') return String(node.value);
-  if (node.kind === 'StringLiteral') return `"${node.value}"`;
   if (node.kind === 'PrefixExpression') return `Prefix: ${node.operator}`;
   if (node.kind === 'InfixExpression') return `Binary: ${node.operator}`;
+  if (node.kind === 'RangeExpression') return node.inclusive ? 'Range: ..=' : 'Range: ..';
   return 'CallExpression';
 }
 
@@ -28,9 +28,6 @@ function mapExpression(node: ExpressionNode): DisplayASTNode {
   }
   if (node.kind === 'IntegerLiteral') {
     return { type: 'Literal', label: String(node.value) };
-  }
-  if (node.kind === 'StringLiteral') {
-    return { type: 'Literal', label: `"${node.value}"` };
   }
   if (node.kind === 'PrefixExpression') {
     return {
@@ -44,6 +41,13 @@ function mapExpression(node: ExpressionNode): DisplayASTNode {
       type: 'Expression',
       label: `InfixExpression: ${node.operator}`,
       children: [mapExpression(node.left), mapExpression(node.right)],
+    };
+  }
+  if (node.kind === 'RangeExpression') {
+    return {
+      type: 'Expression',
+      label: node.inclusive ? 'RangeExpression: ..=' : 'RangeExpression: ..',
+      children: [mapExpression(node.start), mapExpression(node.end)],
     };
   }
   return {
@@ -120,7 +124,7 @@ function mapStatement(node: StatementNode): DisplayASTNode {
     case 'ForStatement':
       return {
         type: 'Statement',
-        label: `ForStatement: ${node.mutable ? 'mut ' : ''}${node.variable.value}`,
+        label: `ForStatement: ${node.mutable ? 'mut ' : ''}${node.variable.value}${node.typeName ? `: ${node.typeName}` : ''}`,
         children: [mapExpression(node.iterator), mapStatement(node.body)],
       };
     case 'LoopStatement':

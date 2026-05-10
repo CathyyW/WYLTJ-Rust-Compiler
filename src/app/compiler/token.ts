@@ -41,6 +41,7 @@ export type TokenType =
   | 'COMMA'
   | 'COLON'
   | 'SEMICOLON'
+  | 'HASH'
   | 'EOF'
   | 'ILLEGAL';
 

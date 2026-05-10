@@ -6,10 +6,10 @@ import { ControlBar } from './components/ControlBar';
 import { analyzeSource } from './compiler/analyzer';
 
 const SAMPLE_CODE = `fn main() {
-    let x = 5;
-    let y = 10;
-    let sum = x + y;
-    println!("Sum: {}", sum);
+  let mut x: i32 = 5;
+  let mut y: i32 = 10;
+  let mut sum: i32 = x + y;
+  sum;
 }`;
 
 const IR_PLACEHOLDER = '# IR backend not connected yet.';

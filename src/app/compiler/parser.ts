@@ -13,7 +13,6 @@ import type {
   IfStatement,
   LetStatement,
   LoopStatement,
-  PrefixExpression,
   ProgramNode,
   ReturnStatement,
   StatementNode,
@@ -45,6 +44,7 @@ const PRECEDENCE: Record<TokenType, number> = {
   COMMA: 0,
   COLON: 0,
   SEMICOLON: 0,
+  HASH: 0,
   RBRACE: 0,
   RBRACKET: 0,
   RPAREN: 0,
@@ -83,13 +83,20 @@ export class Parser {
 
   public parseProgram(): ProgramNode {
     const statements: StatementNode[] = [];
-    while (!this.currentTokenIs('EOF')) {
-      const stmt = this.parseStatement();
-      if (stmt) {
-        statements.push(stmt);
-      } else {
-        this.nextToken();
+    while (!this.currentTokenIs('EOF') && !this.currentTokenIs('HASH')) {
+      if (this.currentTokenIs('FN')) {
+        const fn = this.parseFunctionDeclaration();
+        if (fn) {
+          statements.push(fn);
+        } else {
+          this.nextToken();
+        }
+        continue;
       }
+      this.addError(
+        `语法错误 (L${this.currentToken.line} C${this.currentToken.col}): 顶层仅允许函数声明`,
+      );
+      this.nextToken();
     }
     return { kind: 'Program', statements };
   }
@@ -97,7 +104,6 @@ export class Parser {
   private parseStatement(): StatementNode | null {
     if (this.currentTokenIs('LET')) return this.parseLetStatement();
     if (this.currentTokenIs('RETURN')) return this.parseReturnStatement();
-    if (this.currentTokenIs('FN')) return this.parseFunctionDeclaration();
     if (this.currentTokenIs('IF')) return this.parseIfStatement();
     if (this.currentTokenIs('WHILE')) return this.parseWhileStatement();
     if (this.currentTokenIs('FOR')) return this.parseForStatement();
@@ -236,12 +242,10 @@ export class Parser {
         return null;
       }
       const name = this.currentToken.literal;
-      let typeName: string | undefined;
-      if (this.peekTokenIs('COLON')) {
-        this.nextToken();
-        this.nextToken();
-        typeName = this.parseTypeName();
-      }
+      if (!this.expectPeek('COLON')) return null;
+      this.nextToken();
+      const typeName = this.parseTypeName();
+      if (!typeName) return null;
       params.push({ name, mutable, typeName });
       if (this.peekTokenIs('COMMA')) {
         this.nextToken();
@@ -315,10 +319,27 @@ export class Parser {
       return null;
     }
     const variable: IdentifierExpression = { kind: 'Identifier', value: this.currentToken.literal };
+    let typeName: string | undefined;
+    if (this.peekTokenIs('COLON')) {
+      this.nextToken();
+      this.nextToken();
+      typeName = this.parseTypeName();
+      if (!typeName) return null;
+    }
     if (!this.expectPeek('IN')) return null;
     this.nextToken();
-    const iterator = this.parseExpression(0);
-    if (!iterator) return null;
+    const start = this.parseExpression(0);
+    if (!start) return null;
+    if (!this.peekTokenIs('DOTDOT') && !this.peekTokenIs('DOTDOT_EQ')) {
+      this.addError(`语法错误 (L${this.peekToken.line} C${this.peekToken.col}): for 迭代器期望 '..'`);
+      return null;
+    }
+    this.nextToken();
+    const inclusive = this.currentTokenIs('DOTDOT_EQ');
+    this.nextToken();
+    const end = this.parseExpression(0);
+    if (!end) return null;
+    const iterator: ExpressionNode = { kind: 'RangeExpression', start, end, inclusive };
     if (!this.peekTokenIs('LBRACE')) {
       this.addError(`语法错误 (L${this.peekToken.line} C${this.peekToken.col}): for 迭代器后期望 '{'`);
       return null;
@@ -327,7 +348,7 @@ export class Parser {
     const body = this.parseBlockStatement();
     if (!body) return null;
     this.nextToken();
-    return { kind: 'ForStatement', variable, mutable, iterator, body };
+    return { kind: 'ForStatement', variable, mutable, typeName, iterator, body };
   }
 
   private parseLoopStatement(): LoopStatement | null {
@@ -361,6 +382,8 @@ export class Parser {
       const stmt = this.parseStatement();
       if (stmt) {
         statements.push(stmt);
+      } else {
+        this.nextToken();
       }
     }
     if (!this.currentTokenIs('RBRACE')) {
@@ -395,15 +418,6 @@ export class Parser {
   private parsePrefix(): ExpressionNode | null {
     if (this.currentTokenIs('IDENT')) return { kind: 'Identifier', value: this.currentToken.literal };
     if (this.currentTokenIs('INT')) return { kind: 'IntegerLiteral', value: Number(this.currentToken.literal) };
-    if (this.currentTokenIs('STRING')) return { kind: 'StringLiteral', value: this.currentToken.literal };
-    if (this.currentTokenIs('MINUS') || this.currentTokenIs('BANG') || this.currentTokenIs('AMPERSAND')) {
-      const operator = this.currentToken.literal;
-      this.nextToken();
-      const right = this.parseExpression(6);
-      if (!right) return null;
-      const node: PrefixExpression = { kind: 'PrefixExpression', operator, right };
-      return node;
-    }
     if (this.currentTokenIs('LPAREN')) {
       this.nextToken();
       const expr = this.parseExpression(0);
@@ -453,22 +467,12 @@ export class Parser {
 
   private parseTypeName(): string | null {
     if (this.currentTokenIs('I32')) return 'i32';
-    if (this.currentTokenIs('AMPERSAND')) {
-      this.nextToken();
-      const mutable = this.currentTokenIs('MUT');
-      if (mutable) this.nextToken();
-      if (!this.currentTokenIs('I32')) {
-        this.addError(`语法错误 (L${this.currentToken.line} C${this.currentToken.col}): 引用类型后期望 i32`);
-        return null;
-      }
-      return mutable ? '&mut i32' : '&i32';
-    }
     this.addError(`语法错误 (L${this.currentToken.line} C${this.currentToken.col}): 不支持的类型`);
     return null;
   }
 
   private isInfixOperator(type: TokenType): boolean {
-    return ['PLUS', 'MINUS', 'SLASH', 'ASTERISK', 'EQ', 'NOT_EQ', 'LT', 'GT', 'LTE', 'GTE', 'DOTDOT', 'DOTDOT_EQ', 'LPAREN'].includes(type);
+    return ['PLUS', 'MINUS', 'SLASH', 'ASTERISK', 'EQ', 'NOT_EQ', 'LT', 'GT', 'LTE', 'GTE', 'LPAREN'].includes(type);
   }
 
   private nextToken() {
