@@ -109,8 +109,8 @@ export class Lexer {
           return this.makeToken(KEYWORDS[ident] ?? 'IDENT', ident, startLine, startCol);
         }
         if (this.isDigit(this.ch)) {
-          const num = this.readNumber();
-          return this.makeToken('INT', num, startLine, startCol);
+          const { literal, type } = this.readNumber();
+          return this.makeToken(type, literal, startLine, startCol);
         }
         const illegal = this.ch;
         this.readChar();
@@ -152,12 +152,19 @@ export class Lexer {
     return this.input.slice(start, this.position);
   }
 
-  private readNumber(): string {
+  private readNumber(): { literal: string; type: TokenType } {
     const start = this.position;
     while (this.isDigit(this.ch)) {
       this.readChar();
     }
-    return this.input.slice(start, this.position);
+    if (this.ch === '.' && this.isDigit(this.peekChar())) {
+      this.readChar();
+      while (this.isDigit(this.ch)) {
+        this.readChar();
+      }
+      return { literal: this.input.slice(start, this.position), type: 'FLOAT' };
+    }
+    return { literal: this.input.slice(start, this.position), type: 'INT' };
   }
 
   private skipWhitespaceAndComments() {

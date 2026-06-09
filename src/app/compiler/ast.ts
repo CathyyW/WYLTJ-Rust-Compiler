@@ -1,12 +1,19 @@
+import type { ValueType } from './typeSystem';
+
 export interface DisplayASTNode {
   type: 'Program' | 'Statement' | 'Expression' | 'Literal' | 'Identifier' | 'Type' | 'Attribute' | 'Parameter' | 'Operator' | 'List';
   label: string;
   children?: DisplayASTNode[];
 }
 
+export interface TypeAnnotation {
+  text: string;
+  type: ValueType;
+}
+
 export interface ProgramNode {
   kind: 'Program';
-  statements: StatementNode[];
+  statements: FunctionDeclaration[];
 }
 
 export type StatementNode =
@@ -27,7 +34,7 @@ export interface LetStatement {
   kind: 'LetStatement';
   name: IdentifierExpression;
   mutable: boolean;
-  typeName?: string;
+  typeAnnotation?: TypeAnnotation;
   value?: ExpressionNode;
 }
 
@@ -44,19 +51,20 @@ export interface ExpressionStatement {
 export interface BlockStatement {
   kind: 'BlockStatement';
   statements: StatementNode[];
+  tailExpression?: ExpressionNode;
 }
 
 export interface FunctionParameter {
   name: string;
   mutable: boolean;
-  typeName?: string;
+  typeAnnotation: TypeAnnotation;
 }
 
 export interface FunctionDeclaration {
   kind: 'FunctionDeclaration';
   name: IdentifierExpression;
   params: FunctionParameter[];
-  returnType?: string;
+  returnType?: TypeAnnotation;
   body: BlockStatement;
 }
 
@@ -77,7 +85,7 @@ export interface ForStatement {
   kind: 'ForStatement';
   variable: IdentifierExpression;
   mutable: boolean;
-  typeName?: string;
+  typeAnnotation?: TypeAnnotation;
   iterator: ExpressionNode;
   body: BlockStatement;
 }
@@ -89,6 +97,7 @@ export interface LoopStatement {
 
 export interface BreakStatement {
   kind: 'BreakStatement';
+  value?: ExpressionNode;
 }
 
 export interface ContinueStatement {
@@ -97,17 +106,27 @@ export interface ContinueStatement {
 
 export interface AssignmentStatement {
   kind: 'AssignmentStatement';
-  target: IdentifierExpression;
+  target: ExpressionNode;
   value: ExpressionNode;
 }
 
 export type ExpressionNode =
   | IdentifierExpression
   | IntegerLiteral
+  | FloatLiteral
   | PrefixExpression
   | InfixExpression
   | CallExpression
-  | RangeExpression;
+  | RangeExpression
+  | ReferenceExpression
+  | DereferenceExpression
+  | IndexExpression
+  | MemberExpression
+  | ArrayLiteral
+  | TupleLiteral
+  | BlockExpression
+  | IfExpression
+  | LoopExpression;
 
 export interface IdentifierExpression {
   kind: 'Identifier';
@@ -116,6 +135,11 @@ export interface IdentifierExpression {
 
 export interface IntegerLiteral {
   kind: 'IntegerLiteral';
+  value: number;
+}
+
+export interface FloatLiteral {
+  kind: 'FloatLiteral';
   value: number;
 }
 
@@ -143,4 +167,54 @@ export interface RangeExpression {
   start: ExpressionNode;
   end: ExpressionNode;
   inclusive: boolean;
+}
+
+export interface ReferenceExpression {
+  kind: 'ReferenceExpression';
+  mutable: boolean;
+  target: ExpressionNode;
+}
+
+export interface DereferenceExpression {
+  kind: 'DereferenceExpression';
+  target: ExpressionNode;
+}
+
+export interface IndexExpression {
+  kind: 'IndexExpression';
+  target: ExpressionNode;
+  index: ExpressionNode;
+}
+
+export interface MemberExpression {
+  kind: 'MemberExpression';
+  target: ExpressionNode;
+  member: string;
+}
+
+export interface ArrayLiteral {
+  kind: 'ArrayLiteral';
+  elements: ExpressionNode[];
+}
+
+export interface TupleLiteral {
+  kind: 'TupleLiteral';
+  elements: ExpressionNode[];
+}
+
+export interface BlockExpression {
+  kind: 'BlockExpression';
+  block: BlockStatement;
+}
+
+export interface IfExpression {
+  kind: 'IfExpression';
+  condition: ExpressionNode;
+  consequence: BlockStatement;
+  alternative: BlockStatement;
+}
+
+export interface LoopExpression {
+  kind: 'LoopExpression';
+  body: BlockStatement;
 }

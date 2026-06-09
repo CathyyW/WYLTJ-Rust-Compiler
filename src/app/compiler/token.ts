@@ -14,6 +14,7 @@ export type TokenType =
   | 'I32'
   | 'IDENT'
   | 'INT'
+  | 'FLOAT'
   | 'STRING'
   | 'ASSIGN'
   | 'PLUS'

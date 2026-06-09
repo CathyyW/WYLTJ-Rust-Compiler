@@ -12,9 +12,6 @@ const SAMPLE_CODE = `fn main() {
   sum;
 }`;
 
-const IR_PLACEHOLDER = '# IR backend not connected yet.';
-const TARGET_PLACEHOLDER = '# Target backend not connected yet.';
-
 export default function App() {
   type LogEntry = { type: 'info' | 'success' | 'warning' | 'error'; message: string };
   const browserWindow = window as Window & {
@@ -45,13 +42,13 @@ export default function App() {
       setLogs(result.logs);
       setAstTree(result.astTree);
       setLexicalTokens(result.tokens);
-      setIntermediateCode(IR_PLACEHOLDER);
-      setTargetCode(TARGET_PLACEHOLDER);
+      setIntermediateCode(result.intermediateCode);
+      setTargetCode(result.targetCode);
     } catch (error) {
       setAstTree(null);
       setLexicalTokens([]);
-      setIntermediateCode(IR_PLACEHOLDER);
-      setTargetCode(TARGET_PLACEHOLDER);
+      setIntermediateCode('');
+      setTargetCode('');
       setLogs([
         { type: 'info', message: 'Starting compilation...' },
         {
