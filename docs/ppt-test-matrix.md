@@ -6,6 +6,7 @@ Legend:
 
 - Pass: the sample should compile without lexical, syntax, or semantic errors.
 - Error: the sample is marked invalid in the PPT or is the normalized form of a PPT invalid case.
+- Compatibility note: `program_9_3__3` keeps the PPT's original array parameter and accepts `array.NUM` as a constant-index compatibility form.
 
 | ID | Rule | Expected | Sample |
 | --- | --- | --- | --- |
@@ -77,7 +78,7 @@ Legend:
 | program_9_2__2 | 9.2 tuple element type mismatch | Error | `fn program_9_2__2() { let mut a:((),); a=(1,); }` |
 | program_9_3__1 | 9.3 nested tuple access | Pass | `fn program_9_3__1(mut a:((i32,i32),)) { let mut b:i32=a.0.0; }` |
 | program_9_3__2 | 9.3 tuple elements in expression | Pass | `fn program_9_3__2(mut a:(i32,i32,i32)) { let mut b:i32=a.0+a.1+a.2; }` |
-| program_9_3__3 | 9.3 tuple element assignment | Pass | `fn program_9_3__3(mut a:(i32,i32,i32)) { a.0=1; }` |
+| program_9_3__3 | 9.3 tuple element assignment / PPT array-dot compatibility | Pass | `fn program_9_3__3(mut a:[i32;3]) { a.0=1; }` |
 | program_9_3__4_bad_index_type | 9.3 non-integer tuple index | Error | `fn program_9_3__4(mut a:i32) { let mut a=(1,2,3); let mut b=a.a; }` |
 | program_9_3__5_bad_index_range | 9.3 tuple index out of range | Error | `fn program_9_3__5() { let mut a=(1,2,3); let mut b=a.3; }` |
 | program_9_3__6_immutable_elem | 9.3 immutable tuple element | Error | `fn program_9_3__6() { let a:(i32,i32,i32)=(1,2,3); a.0=4; }` |
@@ -93,3 +94,5 @@ Additional regression cases used after fixing the PPT matrix:
 | for_continue_ir | range-for `continue` jumps to increment step | Pass | `fn f(mut n:i32) { for mut i in 0..n { continue; } }` |
 | for_array_break_ir | array for-in `break` emits loop exit jump | Pass | `fn f(mut a:[i32;3]) { for mut x in a { break; } }` |
 | for_array_continue_ir | array for-in `continue` emits continue jump | Pass | `fn f(mut a:[i32;3]) { for mut x in a { continue; } }` |
+| array_dot_compat_read | PPT-compatible `array.NUM` read | Pass | `fn f(mut a:[i32;3]) { let mut b:i32=a.0; }` |
+| array_dot_compat_oob | PPT-compatible `array.NUM` keeps bounds check | Error | `fn f(mut a:[i32;3]) { let mut b:i32=a.3; }` |

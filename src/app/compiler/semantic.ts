@@ -534,11 +534,18 @@ export class SemanticAnalyzer {
       this.error('元组的索引的类型必须是整数类型');
       return UNKNOWN_TYPE;
     }
+    const index = Number(member);
+    if (targetType.kind === 'array') {
+      if (index < 0 || index >= targetType.length) {
+        this.error(`数组的索引必须在合法范围 [0, ${targetType.length}) 内`);
+        return UNKNOWN_TYPE;
+      }
+      return targetType.element;
+    }
     if (targetType.kind !== 'tuple') {
       this.error(`只有元组类型可以按字段取元素，得到 ${typeToString(targetType)}`);
       return UNKNOWN_TYPE;
     }
-    const index = Number(member);
     if (index < 0 || index >= targetType.elements.length) {
       this.error(`元组的索引必须在合法范围 [0, ${targetType.elements.length}) 内`);
       return UNKNOWN_TYPE;
@@ -707,16 +714,28 @@ export class SemanticAnalyzer {
           this.error('元组的索引的类型必须是整数类型');
           return null;
         }
+        const index = Number(target.member);
+        const root = this.findRootBinding(target.target, scope);
+        if (containerType.kind === 'array') {
+          if (index < 0 || index >= containerType.length) {
+            this.error(`数组的索引必须在合法范围 [0, ${containerType.length}) 内`);
+            return null;
+          }
+          return {
+            type: containerType.element,
+            mutable: root ? root.mutable : true,
+            root,
+            immutableReason: 'binding',
+          };
+        }
         if (containerType.kind !== 'tuple') {
           this.error(`只有元组类型可以按字段取元素，得到 ${typeToString(containerType)}`);
           return null;
         }
-        const index = Number(target.member);
         if (index < 0 || index >= containerType.elements.length) {
           this.error(`元组的索引必须在合法范围 [0, ${containerType.elements.length}) 内`);
           return null;
         }
-        const root = this.findRootBinding(target.target, scope);
         return {
           type: containerType.elements[index],
           mutable: root ? root.mutable : true,
