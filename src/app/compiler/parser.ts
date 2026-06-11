@@ -278,12 +278,14 @@ export class Parser {
     while (!this.at('RBRACE') && !this.at('EOF')) {
       if (this.canStartTailExpression()) {
         const checkpoint = this.position;
+        const errorCheckpoint = this.errors.length;
         const expression = this.parseExpression(0);
-        if (expression && this.at('RBRACE')) {
+        if (expression && this.at('RBRACE') && this.canUseAsTailExpression(expression)) {
           tailExpression = expression;
           break;
         }
         this.position = checkpoint;
+        this.errors.splice(errorCheckpoint);
       }
 
       const statement = this.parseStatement();
@@ -552,7 +554,16 @@ export class Parser {
       'ASTERISK',
       'MINUS',
       'BANG',
+      'IF',
+      'LOOP',
     ].includes(this.current().type);
+  }
+
+  private canUseAsTailExpression(expression: ExpressionNode): boolean {
+    if (expression.kind === 'IfExpression') {
+      return Boolean(expression.consequence.tailExpression && expression.alternative.tailExpression);
+    }
+    return true;
   }
 
   private currentPrecedence(): number {

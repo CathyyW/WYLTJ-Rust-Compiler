@@ -157,7 +157,7 @@ export class Lexer {
     while (this.isDigit(this.ch)) {
       this.readChar();
     }
-    if (this.ch === '.' && this.isDigit(this.peekChar())) {
+    if (this.ch === '.' && this.isDigit(this.peekChar()) && this.input[start - 1] !== '.') {
       this.readChar();
       while (this.isDigit(this.ch)) {
         this.readChar();

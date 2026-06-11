@@ -157,15 +157,22 @@ export class IRGenerator {
   private generateFor(statement: ForStatement) {
     if (statement.iterator.kind !== 'RangeExpression') {
       const iterable = this.generateExpression(statement.iterator);
+      const continueLabel = this.newLabel('forin_continue');
+      const endLabel = this.newLabel('endforin');
       this.emit('for_in', iterable, '-', statement.variable.value);
+      this.loopStack.push({ breakLabel: endLabel, continueLabel });
       this.generateBlock(statement.body);
+      this.loopStack.pop();
+      this.emit('label', '-', '-', continueLabel);
       this.emit('end_for_in', '-', '-', statement.variable.value);
+      this.emit('label', '-', '-', endLabel);
       return;
     }
 
     const start = this.generateExpression(statement.iterator.start);
     const end = this.generateExpression(statement.iterator.end);
     const startLabel = this.newLabel('for');
+    const stepLabel = this.newLabel('for_step');
     const endLabel = this.newLabel('endfor');
     const stepTemp = this.newTemp();
     const conditionTemp = this.newTemp();
@@ -174,9 +181,10 @@ export class IRGenerator {
     this.emit('label', '-', '-', startLabel);
     this.emit(statement.iterator.inclusive ? '<=' : '<', statement.variable.value, end, conditionTemp);
     this.emit('jz', conditionTemp, '-', endLabel);
-    this.loopStack.push({ breakLabel: endLabel, continueLabel: startLabel });
+    this.loopStack.push({ breakLabel: endLabel, continueLabel: stepLabel });
     this.generateBlock(statement.body);
     this.loopStack.pop();
+    this.emit('label', '-', '-', stepLabel);
     this.emit('+', statement.variable.value, '1', stepTemp);
     this.emit('=', stepTemp, '-', statement.variable.value);
     this.emit('jmp', '-', '-', startLabel);
