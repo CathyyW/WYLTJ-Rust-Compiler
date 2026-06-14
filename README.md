@@ -1,6 +1,12 @@
 # 🦀 WYLTJ-Rust-Compiler
 
-<video src="./演示视频.mp4" controls autoplay muted loop playsinline width="100%"></video>
+<p align="center">
+  <img src="./docs/demo.gif" width="100%" alt="演示效果" />
+</p>
+
+<p align="center">
+  🎬 <a href="./演示视频.mp4">观看完整演示视频</a>
+</p>
 
 WYLTJ-Rust-Compiler 是一个面向编译原理课程实践的 Rust 子集编译器演示项目。项目基于 Vite + React + TypeScript 构建，将源代码编辑、词法分析、语法分析、语义检查、中间代码生成和结果可视化整合在同一个交互界面中，适合用于课程展示、实验验证和编译流程学习。
 
