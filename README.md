@@ -1,7 +1,7 @@
 # 🦀 WYLTJ-Rust-Compiler
 
 <p align="center">
-  <img src="./docs/demo.gif" width="100%" alt="演示效果" />
+  <img src="./docs/demo.gif" width="720" alt="演示效果" />
 </p>
 
 <p align="center">
